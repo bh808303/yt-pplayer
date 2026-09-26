@@ -7,14 +7,20 @@ Terminal audio player for your YouTube playlists. Uses your Chromium login
 audio streams, and a headless mpv for playback — so no YouTube ads. Non-music
 segments are skipped via SponsorBlock. mpv's MPRIS plugin makes media keys work.
 
-## Run
+## Install
 
-    yt-pplayer          # or .venv/bin/yt-pplayer, or Super+M on Omarchy
+From the AUR (Arch / Omarchy):
 
-Setup (also after a Python upgrade breaks the venv): `./setup.sh`
+    omarchy pkg aur add yt-pplayer      # or: yay -S yt-pplayer
 
-yt-dlp comes from pacman and is updated by `omarchy update`. The venv only
-holds textual and secretstorage.
+Log in to YouTube in Chromium first; yt-pplayer reuses that login.
+
+From source, for development:
+
+    ./setup.sh                          # venv on top of the system yt-dlp
+    .venv/bin/yt-pplayer
+
+Rerun `./setup.sh` after a Python upgrade breaks the venv.
 
 ## Keys
 
@@ -43,18 +49,16 @@ By default the colors come from the active Omarchy theme
 (`~/.local/state/omarchy/current/theme/colors.toml`) and follow
 `omarchy theme set` live.
 
-Playlist data is cached in `~/.cache/yt-pplayer/`. If playback breaks after a
-YouTube change, run `omarchy update`. If Arch hasn't packaged the fix yet,
-`.venv/bin/pip install -U yt-dlp` overrides it until the next `./setup.sh`.
+Playlist data is cached in `~/.cache/yt-pplayer/`. yt-dlp comes from pacman,
+so if playback breaks after a YouTube change, run `omarchy update` (or
+`sudo pacman -Syu yt-dlp`).
 
 ## Omarchy: Super+M to show/hide
 
-`omarchy/yt-pplayer-toggle` starts the player on a hidden special workspace,
-and on later presses shows or hides it — the music keeps playing while it's
-hidden. Closing the window (Super+W) or pressing `q` stops it.
-
-    ln -s "$PWD/omarchy/yt-pplayer-toggle" ~/.local/bin/
-    ln -s "$PWD/.venv/bin/yt-pplayer" ~/.local/bin/
+`yt-pplayer-toggle` (installed by the package, or `omarchy/yt-pplayer-toggle`
+in this repo) starts the player on a hidden special workspace, and on later
+presses shows or hides it — the music keeps playing while it's hidden.
+Closing the window (Super+W) or pressing `q` stops it.
 
 `~/.config/hypr/bindings.lua`:
 
