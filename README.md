@@ -77,6 +77,12 @@ o.window("org.omarchy.yt-pplayer", { size = { 1100, 700 } })
 o.window("org.omarchy.yt-pplayer", { workspace = "special:music" })
 ```
 
+## Releasing
+
+    ./release.sh 0.2.0 --dry-run   # rehearse: builds everything, publishes nothing
+    ./release.sh 0.2.0             # bump, tag, pin PKGBUILD checksum, GitHub release
+    ./release.sh 0.2.0 --aur       # ...and update the AUR package
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
