@@ -3,6 +3,7 @@ name = "yt-pplayer"
 version = "0.1.0"
 description = "YouTube Playlist Player for the terminal"
 requires-python = ">=3.11"
+license = "MIT"
 # yt-dlp is provided by pacman; see setup.sh
 dependencies = ["yt-dlp", "secretstorage", "textual"]
 
@@ -10,7 +11,7 @@ dependencies = ["yt-dlp", "secretstorage", "textual"]
 yt-pplayer = "yt_pplayer.app:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]

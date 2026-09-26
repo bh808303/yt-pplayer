@@ -1,5 +1,7 @@
 # yt-pplayer — YouTube Playlist Player
 
+![yt-pplayer on Omarchy, playing a track from a playlist](docs/screenshot.png)
+
 Terminal audio player for your YouTube playlists. Uses your Chromium login
 (cookies read from the GNOME keyring), yt-dlp to list playlists and resolve
 audio streams, and a headless mpv for playback — so no YouTube ads. Non-music
@@ -68,3 +70,7 @@ o.window("org.omarchy.yt-pplayer", { center = true })
 o.window("org.omarchy.yt-pplayer", { size = { 1100, 700 } })
 o.window("org.omarchy.yt-pplayer", { workspace = "special:music" })
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
