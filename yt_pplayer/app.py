@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import random
+import signal
 
 from rich.text import Text
 from textual import on, work
@@ -119,6 +120,10 @@ class YtPPlayer(App):
             self.update_now_playing()
 
     async def on_mount(self) -> None:
+        # Closing the terminal window sends SIGHUP; quit properly instead of dying mid-playback.
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGHUP, signal.SIGTERM):
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(self.action_quit()))
         self.sync_theme()
         if not os.environ.get("YT_PPLAYER_THEME"):
             self.set_interval(2, self.sync_theme)

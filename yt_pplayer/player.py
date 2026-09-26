@@ -3,11 +3,22 @@
 from __future__ import annotations
 
 import asyncio
+import ctypes
 import itertools
 import json
 import os
+import signal
 import tempfile
 from typing import Any, Callable
+
+
+PR_SET_PDEATHSIG = 1
+
+
+def _die_with_parent() -> None:
+    # Runs in the forked child: have the kernel stop mpv if the app dies without
+    # cleaning up (e.g. its terminal window is closed), so music never plays on orphaned.
+    ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
 
 
 class Mpv:
@@ -25,7 +36,7 @@ class Mpv:
             "--ytdl=no", "--cache=yes", "--demuxer-max-bytes=64MiB",
             f"--input-ipc-server={self._sock}",
             stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL, preexec_fn=_die_with_parent,
         )
         for _ in range(100):
             try:
