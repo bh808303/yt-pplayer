@@ -28,6 +28,13 @@ def fmt_time(seconds: float | None) -> str:
     return f"{h}:{m:02}:{s:02}" if h else f"{m}:{s:02}"
 
 
+class TrackTable(DataTable):
+    """DataTable that asks the app to re-layout its columns once its own size changed."""
+
+    def on_resize(self) -> None:
+        self.app.fill_table()
+
+
 class YtPPlayer(App):
     TITLE = "yt-pplayer"
     CSS = """
@@ -92,7 +99,7 @@ class YtPPlayer(App):
             yield OptionList(id="playlists")
             with Vertical(id="right"):
                 yield Input(placeholder="Filter tracks…", id="search")
-                yield DataTable(id="tracks", cursor_type="row", zebra_stripes=True)
+                yield TrackTable(id="tracks", cursor_type="row", zebra_stripes=True)
         with Vertical(id="nowplaying"):
             yield Static("Nothing playing — pick a playlist, then a track (or press r)", id="np-text")
             yield ProgressBar(id="progress", show_eta=False, show_percentage=False)
@@ -130,10 +137,6 @@ class YtPPlayer(App):
         self.query_one("#playlists", OptionList).border_title = "Playlists"
         table = self.query_one("#tracks", DataTable)
         table.border_title = "Tracks"
-        table.add_column(" ", key="mark", width=2)
-        table.add_column("Title", key="title")  # width follows the terminal, see fill_table
-        table.add_column("Channel", key="channel", width=24)
-        table.add_column("Time", key="time", width=8)
         try:
             await self.mpv.start()
         except Exception as e:
@@ -198,21 +201,27 @@ class YtPPlayer(App):
         needle = self.query_one("#search", Input).value.strip().lower()
         playing_id = self.queue[self.current].id if self.current is not None else None
         row = table.cursor_row
-        # mark + channel + time columns, cell padding, border and scrollbar
-        title_width = max(20, table.size.width - 2 - 24 - 8 - 8 - 4)
-        table.clear()
+        # Room left after border (2), scrollbar (2), cell padding (4 x 2), mark (2), time (7).
+        text_width = max(12, table.size.width - 21)
+        channel_width = min(24, max(7, text_width * 3 // 10))  # 7 = "Channel" header
+        title_width = text_width - channel_width
+        # Recreate the columns: DataTable never shrinks a column once content widened it.
+        table.clear(columns=True)
+        table.add_column(" ", key="mark", width=2)
+        table.add_column("Title", key="title")
+        table.add_column("Channel", key="channel")
+        table.add_column("Time", key="time", width=7)
         for i, t in enumerate(self.tracks):
             if needle and needle not in t.title.lower() and needle not in t.channel.lower():
                 continue
             mark = "▶" if t.id == playing_id and self.queue_playlist is self.shown else ""
-            title = t.title if len(t.title) <= title_width else t.title[: title_width - 1] + "…"
-            channel = t.channel if len(t.channel) <= 24 else t.channel[:23] + "…"
+            title = Text(t.title, no_wrap=True)
+            title.truncate(title_width, overflow="ellipsis")
+            channel = Text(t.channel, no_wrap=True)
+            channel.truncate(channel_width, overflow="ellipsis")
             table.add_row(mark, title, channel, fmt_time(t.duration), key=str(i))
         if table.row_count:
             table.move_cursor(row=min(row, table.row_count - 1))
-
-    def on_resize(self) -> None:
-        self.call_after_refresh(self.fill_table)
 
     # -- search ----------------------------------------------------------
 
@@ -286,7 +295,9 @@ class YtPPlayer(App):
         except Exception as e:
             self.loading = False
             self.errors_in_row += 1
-            self.notify(f"Can't play “{track.title}”: {e}", severity="warning", timeout=6)
+            # yt-dlp messages look like "ERROR: [youtube] <id>: Video unavailable".
+            reason = str(e).rsplit(": ", 1)[-1]
+            self.notify(f"Skipped “{track.title}”: {reason}", severity="warning", timeout=6)
             if self.errors_in_row < 5 and self.current == index:
                 self.play(self.order[(self.pos + 1) % len(self.order)], record=False)
             return
