@@ -1,6 +1,9 @@
 # yt-pplayer — YouTube Playlist Player
 
-![yt-pplayer on Omarchy, playing a track from a playlist](docs/screenshot.png)
+![yt-pplayer on Omarchy: Super+M opens the player, picks a track, then hides and shows it while the music keeps playing](docs/demo.gif)
+
+*Super+M opens the player; pressing it again hides it while the music keeps
+playing. ([Full-quality video](docs/demo.mp4))*
 
 Terminal audio player for your YouTube playlists. Uses your Chromium login
 (cookies read from the GNOME keyring), yt-dlp to list playlists and resolve
