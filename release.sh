@@ -14,9 +14,17 @@ PKG=yt-pplayer
 AUR_URL=ssh://aur@aur.archlinux.org/$PKG.git
 
 die() { echo "error: $*" >&2; exit 1; }
+cleanup=()
+trap 'rm -rf "${cleanup[@]}"' EXIT
+scratch() {  # scratch VAR [keep]: new temp dir in VAR, removed on exit (kept in dry-run if "keep")
+  local d; d=$(mktemp -d)
+  [[ ${2:-} == keep ]] && ((dry)) || cleanup+=("$d")
+  printf -v "$1" %s "$d"
+}
 step() { echo; echo "==> $*"; }
 
 version="" aur=0 dry=0 aur_only=0
+work="" src="" build="" notesdir=""  # set by scratch
 for arg in "$@"; do
   case $arg in
     --aur) aur=1 ;;
@@ -39,7 +47,7 @@ publish_aur() {
     echo "   (dry-run) push $PKG $ver to $AUR_URL"
     return
   fi
-  local tmp; tmp=$(mktemp -d)
+  local tmp; scratch tmp
   git clone -q "$AUR_URL" "$tmp" 2>/dev/null || die "cannot reach $AUR_URL (AUR account and SSH key set up?)"
   cp aur/PKGBUILD aur/.SRCINFO "$tmp/"
   if [[ -z $(git -C "$tmp" status --porcelain) ]]; then
@@ -50,7 +58,6 @@ publish_aur() {
     git -C "$tmp" push -q origin HEAD:master
     echo "https://aur.archlinux.org/packages/$PKG"
   fi
-  rm -rf "$tmp"
 }
 
 if ((aur_only)); then
@@ -83,7 +90,7 @@ fi
 
 if ((dry)); then
   # Work on a throwaway clone so nothing here changes.
-  work=$(mktemp -d)
+  scratch work keep
   git clone -q . "$work"
   cd "$work"
   echo "dry-run: working in $work"
@@ -98,7 +105,7 @@ git tag -a "$tag" -m "$PKG $version"
 run git push -q origin main "$tag"
 
 step "Pinning the source checksum"
-tarball=$(mktemp -d)/$PKG-$version.tar.gz
+scratch src; tarball=$src/$PKG-$version.tar.gz
 if ((dry)); then
   # GitHub's archive isn't there in a dry run; a local one tests the same steps.
   git archive --format=tar.gz --prefix="$PKG-$version/" -o "$tarball" "$tag"
@@ -118,7 +125,7 @@ run git push -q origin main
 echo "sha256 $sum"
 
 step "Building the package"
-build=$(mktemp -d)
+scratch build keep
 cp aur/PKGBUILD "$build/"
 if ((dry)); then
   cp "$tarball" "$build/"
@@ -132,7 +139,7 @@ echo "$pkgfile"
 namcap "$pkgfile" | grep -v -e "uninstalled dependency" -e "may not be needed" -e "Dependency bash detected" || true
 
 step "Publishing the GitHub release"
-notes=$(mktemp)
+scratch notesdir; notes=$notesdir/notes.md
 {
   if [[ -n $previous ]]; then
     echo "## Changes since $previous"
@@ -165,5 +172,5 @@ fi
 ((aur)) && publish_aur
 
 step "Done"
-((dry)) && echo "dry-run finished; nothing was pushed or published (scratch clone: $work)"
+((dry)) && echo "dry-run finished; nothing was pushed or published. Inspect: $work (clone), $build (package)"
 exit 0
