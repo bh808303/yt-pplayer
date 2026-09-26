@@ -1,0 +1,15 @@
+#!/bin/bash
+# Super+M on Omarchy: start yt-pplayer, or show/hide it. It lives on the special
+# workspace "music", so hiding it keeps the music playing.
+
+CLASS=org.omarchy.yt-pplayer
+workspace=$(hyprctl clients -j | jq -r --arg c "$CLASS" 'first(.[] | select(.class == $c) | .workspace.name) // empty')
+
+if [[ -z $workspace ]]; then
+  exec omarchy-launch-tui yt-pplayer
+elif [[ $workspace == special:music ]]; then
+  hyprctl dispatch 'hl.dsp.workspace.toggle_special("music")' >/dev/null
+else
+  # Moved to a regular workspace by hand: just bring it into focus.
+  hyprctl dispatch "hl.dsp.focus({ window = \"class:$CLASS\" })" >/dev/null
+fi

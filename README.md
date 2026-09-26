@@ -44,3 +44,27 @@ By default the colors come from the active Omarchy theme
 Playlist data is cached in `~/.cache/yt-pplayer/`. If playback breaks after a
 YouTube change, run `omarchy update`. If Arch hasn't packaged the fix yet,
 `.venv/bin/pip install -U yt-dlp` overrides it until the next `./setup.sh`.
+
+## Omarchy: Super+M to show/hide
+
+`omarchy/yt-pplayer-toggle` starts the player on a hidden special workspace,
+and on later presses shows or hides it — the music keeps playing while it's
+hidden. Closing the window (Super+W) or pressing `q` stops it.
+
+    ln -s "$PWD/omarchy/yt-pplayer-toggle" ~/.local/bin/
+    ln -s "$PWD/.venv/bin/yt-pplayer" ~/.local/bin/
+
+`~/.config/hypr/bindings.lua`:
+
+```lua
+o.bind("SUPER + M", "YouTube Playlist Player", "yt-pplayer-toggle")
+```
+
+`~/.config/hypr/hyprland.lua`:
+
+```lua
+o.window("org.omarchy.yt-pplayer", { float = true })
+o.window("org.omarchy.yt-pplayer", { center = true })
+o.window("org.omarchy.yt-pplayer", { size = { 1100, 700 } })
+o.window("org.omarchy.yt-pplayer", { workspace = "special:music" })
+```
