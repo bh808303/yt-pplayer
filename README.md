@@ -9,9 +9,11 @@ segments are skipped via SponsorBlock. mpv's MPRIS plugin makes media keys work.
 
 ## Install
 
-From the AUR (Arch / Omarchy):
+On Arch / Omarchy, build the package from the PKGBUILD in this repo
+(an AUR package is coming):
 
-    omarchy pkg aur add yt-pplayer      # or: yay -S yt-pplayer
+    git clone https://github.com/bh808303/yt-pplayer
+    cd yt-pplayer/aur && makepkg -si
 
 Log in to YouTube in Chromium first; yt-pplayer reuses that login.
 

@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
 *.egg-info/
+aur/src/
+aur/pkg/
+aur/*.tar.*
