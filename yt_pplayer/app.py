@@ -196,11 +196,14 @@ class YtPPlayer(App):
         self.query_one("#tracks", DataTable).border_title = self.shown.title if self.shown else "Tracks"
         self.fill_table()
 
-    def fill_table(self) -> None:
+    def fill_table(self, follow: bool = False) -> None:
+        """Redraw the track table; with follow, move the cursor to the playing track."""
         table = self.query_one("#tracks", DataTable)
         needle = self.query_one("#search", Input).value.strip().lower()
         playing_id = self.queue[self.current].id if self.current is not None else None
         row = table.cursor_row
+        same_playlist = (self.queue_playlist is not None and self.shown is not None
+                         and self.queue_playlist.id == self.shown.id)
         # Room left after border (2), scrollbar (2), cell padding (4 x 2), mark (2), time (7).
         text_width = max(12, table.size.width - 21)
         channel_width = min(24, max(7, text_width * 3 // 10))  # 7 = "Channel" header
@@ -214,7 +217,10 @@ class YtPPlayer(App):
         for i, t in enumerate(self.tracks):
             if needle and needle not in t.title.lower() and needle not in t.channel.lower():
                 continue
-            mark = "▶" if t.id == playing_id and self.queue_playlist is self.shown else ""
+            playing = same_playlist and t.id == playing_id
+            if playing and follow:
+                row = table.row_count
+            mark = "▶" if playing else ""
             title = Text(t.title, no_wrap=True)
             title.truncate(title_width, overflow="ellipsis")
             channel = Text(t.channel, no_wrap=True)
@@ -289,7 +295,7 @@ class YtPPlayer(App):
         self.segments = []
         self.time_pos = self.duration = None
         self.update_now_playing()
-        self.fill_table()
+        self.fill_table(follow=True)
         try:
             stream = await asyncio.wrap_future(self.yt.stream(track.id))
         except Exception as e:
