@@ -1,6 +1,6 @@
 pkgbase = yt-pplayer
 	pkgdesc = YouTube Playlist Player for the terminal: your playlists, ad-free, via yt-dlp and mpv
-	pkgver = 0.1.0
+	pkgver = 0.1.1
 	pkgrel = 1
 	url = https://github.com/bh808303/yt-pplayer
 	arch = any
@@ -17,7 +17,7 @@ pkgbase = yt-pplayer
 	depends = mpv
 	optdepends = mpv-mpris: media keys and desktop media widgets
 	optdepends = jq: for yt-pplayer-toggle (show/hide on Hyprland / Omarchy)
-	source = yt-pplayer-0.1.0.tar.gz::https://github.com/bh808303/yt-pplayer/archive/refs/tags/v0.1.0.tar.gz
-	sha256sums = ad0eb0bee54ca2a587b15b96c09d1053d7c3ee41a5f292981550985077691071
+	source = yt-pplayer-0.1.1.tar.gz::https://github.com/bh808303/yt-pplayer/archive/refs/tags/v0.1.1.tar.gz
+	sha256sums = 1a77208cb1d31bc93af19d0b2e9f0658388b68ec329c81d4791997aa03797346
 
 pkgname = yt-pplayer
