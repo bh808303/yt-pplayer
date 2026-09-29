@@ -11,7 +11,7 @@ makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel
 optdepends=('mpv-mpris: media keys and desktop media widgets'
             'jq: for yt-pplayer-toggle (show/hide on Hyprland / Omarchy)')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('1a77208cb1d31bc93af19d0b2e9f0658388b68ec329c81d4791997aa03797346')
+sha256sums=('14bca4f692d6b8f534505ce8eb97bc488a72cb1fc902e1056f8256b9902f08eb')
 
 build() {
   cd "$pkgname-$pkgver"
