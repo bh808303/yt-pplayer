@@ -1,6 +1,6 @@
 # Maintainer: Rob de Jong <bh808303@hotmail.com>
 pkgname=yt-pplayer
-pkgver=0.1.2
+pkgver=0.1.3
 pkgrel=1
 pkgdesc="YouTube Playlist Player for the terminal: your playlists, ad-free, via yt-dlp and mpv"
 arch=('any')
