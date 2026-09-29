@@ -16,6 +16,7 @@ from pathlib import Path
 
 import yt_dlp
 from yt_dlp.cookies import _get_chromium_based_browser_settings, extract_cookies_from_browser
+from yt_dlp.postprocessor.metadataparser import MetadataParserPP
 
 BROWSER = os.environ.get("YT_PPLAYER_BROWSER", "chromium")
 KEYRING = os.environ.get("YT_PPLAYER_KEYRING", "GNOMEKEYRING")
@@ -201,14 +202,47 @@ class YouTube:
             url=url,
             headers=info.get("http_headers") or {},
             expires=float(expire) or time.time() + 3600,
-            segments=_sponsorblock(track_id),
+            segments=sponsorblock(track_id),
         )
+
+    def download(self, track_id: str, dest: Path, name: str, fmt: str, progress) -> Path:
+        """Download a track's audio to dest/<name>.<ext>, with title/artist tags.
+
+        fmt: "original" (as YouTube serves it), "m4a", "webm" or "mp3" (re-encoded).
+        progress is a yt-dlp progress hook; raising DownloadCancelled in it aborts.
+        """
+        formats = {"m4a": "bestaudio[ext=m4a]/bestaudio", "webm": "bestaudio[ext=webm]/bestaudio"}
+        postprocessors = []
+        if fmt in ("m4a", "mp3"):
+            # Converts only when needed: an m4a download is kept as it is.
+            postprocessors.append({"key": "FFmpegExtractAudio", "preferredcodec": fmt,
+                                   "preferredquality": "192"})
+        postprocessors += [
+            # "Artist - Title" uploads: tag artist and title separately instead of the
+            # channel as artist (YouTube Music tracks already carry proper tags).
+            {"key": "MetadataParser", "when": "pre_process",
+             "actions": [(MetadataParserPP.interpretter, "title", r"(?P<artist>.+?) - (?P<title>.+)")]},
+            {"key": "FFmpegMetadata", "add_metadata": True},
+        ]
+        opts = {
+            "quiet": True, "no_warnings": True, "noprogress": True, "logger": _SilentLogger(),
+            "format": formats.get(fmt, "bestaudio/best"),
+            "outtmpl": str(dest / (name.replace("%", "%%") + ".%(ext)s")),
+            "continuedl": False, "progress_hooks": [progress], "postprocessors": postprocessors,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.__dict__["cookiejar"] = self._cookiejar()
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={track_id}", download=True)
+        return Path(info["requested_downloads"][0]["filepath"])
+
+    def has_cached_tracks(self, playlist: Playlist) -> bool:
+        return (CACHE_DIR / f"pl_{playlist.id}.json").exists()
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=False, cancel_futures=True)
 
 
-def _sponsorblock(track_id: str) -> list[tuple[float, float]]:
+def sponsorblock(track_id: str) -> list[tuple[float, float]]:
     query = urllib.parse.urlencode({"videoID": track_id, "categories": json.dumps(SPONSORBLOCK_CATEGORIES)})
     try:
         with urllib.request.urlopen(f"https://sponsor.ajay.app/api/skipSegments?{query}", timeout=4) as r:

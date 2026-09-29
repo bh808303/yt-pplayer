@@ -15,6 +15,7 @@ pkgbase = yt-pplayer
 	depends = python-secretstorage
 	depends = yt-dlp
 	depends = mpv
+	depends = ffmpeg
 	optdepends = mpv-mpris: media keys and desktop media widgets
 	optdepends = jq: for yt-pplayer-toggle (show/hide on Hyprland / Omarchy)
 	source = yt-pplayer-0.1.2.tar.gz::https://github.com/bh808303/yt-pplayer/archive/refs/tags/v0.1.2.tar.gz

@@ -6,7 +6,7 @@ pkgdesc="YouTube Playlist Player for the terminal: your playlists, ad-free, via 
 arch=('any')
 url="https://github.com/bh808303/yt-pplayer"
 license=('MIT')
-depends=('python' 'python-rich' 'python-textual' 'python-secretstorage' 'yt-dlp' 'mpv')
+depends=('python' 'python-rich' 'python-textual' 'python-secretstorage' 'yt-dlp' 'mpv' 'ffmpeg')
 makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
 optdepends=('mpv-mpris: media keys and desktop media widgets'
             'jq: for yt-pplayer-toggle (show/hide on Hyprland / Omarchy)')
