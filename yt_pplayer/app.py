@@ -75,6 +75,7 @@ class YtPPlayer(App):
         Binding("full_stop", "seek(60)", "+1m", show=False),
         Binding("plus,equals_sign", "volume(5)", "Vol+", show=False),
         Binding("minus", "volume(-5)", "Vol-", show=False),
+        Binding("m", "mute", "Mute"),
         Binding("slash", "search", "Search"),
         Binding("escape", "close_search", "Close search", show=False),
         Binding("ctrl+r", "refresh", "Refresh"),
@@ -104,6 +105,7 @@ class YtPPlayer(App):
         self.duration: float | None = None
         self.paused = False
         self.volume = 100.0
+        self.muted = False
         self.loading = False
         self.errors_in_row = 0
         self.theme_stamp = 0.0
@@ -437,6 +439,9 @@ class YtPPlayer(App):
     async def action_volume(self, delta: int) -> None:
         await self.mpv.command("add", "volume", delta)
 
+    async def action_mute(self) -> None:
+        await self.mpv.command("cycle", "mute")
+
     def action_refresh(self) -> None:
         self.refresh_playlists(reload_cookies=True)
         if self.shown:
@@ -462,6 +467,8 @@ class YtPPlayer(App):
                 self.paused = bool(value)
             elif name == "volume" and value is not None:
                 self.volume = value
+            elif name == "mute":
+                self.muted = bool(value)
             self.update_now_playing()
         elif event == "file-loaded":
             self.loading = False
@@ -501,7 +508,10 @@ class YtPPlayer(App):
             text.append(f"{fmt_time(self.time_pos)} / {fmt_time(self.duration or track.duration)}")
             if self.queue_playlist:
                 text.append(f"   {self.queue_playlist.title} [{self.pos + 1}/{len(self.order)}]", style="dim")
-            text.append(f"   vol {int(self.volume)}", style="dim")
+            if self.muted:
+                text.append("   🔇 muted", style=f"bold {self.current_theme.secondary}")
+            else:
+                text.append(f"   vol {int(self.volume)}", style="dim")
             if self.normalize:
                 text.append(f"   norm {self.loudness:g} LUFS", style="dim")
         if self.shuffle:

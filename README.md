@@ -41,6 +41,7 @@ Rerun `./setup.sh` after a Python upgrade breaks the venv.
 | v              | toggle volume normalization         |
 | ← / →          | seek ±10s  (`,` / `.` = ±1 min)     |
 | + / -          | volume                              |
+| m              | mute / unmute                       |
 | /              | filter tracks (esc to close)        |
 | tab            | switch pane                         |
 | ctrl+r         | refresh playlists (re-reads cookies)|

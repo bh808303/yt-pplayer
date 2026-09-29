@@ -47,7 +47,7 @@ class Mpv:
         else:
             raise RuntimeError("mpv did not open its IPC socket")
         asyncio.create_task(self._read(reader))
-        for i, prop in enumerate(("time-pos", "duration", "pause", "volume", "core-idle"), 1):
+        for i, prop in enumerate(("time-pos", "duration", "pause", "volume", "core-idle", "mute"), 1):
             await self.command("observe_property", i, prop)
 
     async def _read(self, reader: asyncio.StreamReader) -> None:
