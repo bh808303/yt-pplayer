@@ -82,6 +82,16 @@ class Mpv:
         await self.command("loadfile", url, "replace")
         await self.command("set_property", "pause", False)
 
+    async def set_loudness(self, target: float | None) -> None:
+        """Normalize to target LUFS (EBU R128) while playing, or turn that off with None."""
+        if target is None:
+            await self.command("set_property", "af", "")
+            return
+        # LRA=20 is gentle: slow gain changes, so quiet intros and breakdowns stay quiet.
+        # loudnorm works at 192 kHz internally; resample back for the audio output.
+        await self.command("set_property", "af",
+                           f"lavfi=[loudnorm=I={target}:TP=-1:LRA=20,aresample=48000]")
+
     async def stop(self) -> None:
         if self._proc and self._proc.returncode is None:
             try:

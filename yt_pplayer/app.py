@@ -20,6 +20,17 @@ from .theme import load_omarchy_theme, theme_stamp
 from .youtube import NotLoggedIn, Playlist, Track, YouTube
 
 
+def loudness_target() -> float | None:
+    """YT_PPLAYER_LOUDNESS: target in LUFS (default -14, like YouTube), or "off"."""
+    value = os.environ.get("YT_PPLAYER_LOUDNESS", "-14").strip().lower()
+    if value == "off":
+        return None
+    try:
+        return min(-5.0, max(-70.0, float(value)))  # the range loudnorm accepts
+    except ValueError:
+        return -14.0
+
+
 def fmt_time(seconds: float | None) -> str:
     if seconds is None:
         return "--:--"
@@ -57,6 +68,7 @@ class YtPPlayer(App):
         Binding("b", "prev", "Prev"),
         Binding("r", "random", "Random"),
         Binding("s", "shuffle", "Shuffle"),
+        Binding("v", "normalize", "Normalize"),
         Binding("left", "seek(-10)", "-10s", priority=True, show=False),
         Binding("right", "seek(10)", "+10s", priority=True, show=False),
         Binding("comma", "seek(-60)", "-1m", show=False),
@@ -85,6 +97,8 @@ class YtPPlayer(App):
         self.current: int | None = None         # index into queue
         self.random_next: int | None = None     # pre-picked (and pre-fetched) random jump
         self.shuffle = False
+        self.loudness = loudness_target()       # LUFS target when normalizing
+        self.normalize = self.loudness is not None
         self.segments: list[tuple[float, float]] = []
         self.time_pos: float | None = None
         self.duration: float | None = None
@@ -142,6 +156,7 @@ class YtPPlayer(App):
         table.border_title = "Tracks"
         try:
             await self.mpv.start()
+            await self.mpv.set_loudness(self.loudness if self.normalize else None)
         except Exception as e:
             self.notify(f"Could not start mpv: {e}", severity="error", timeout=30)
         self.set_playlists(self.yt.cached_playlists())
@@ -400,6 +415,15 @@ class YtPPlayer(App):
             self.prefetch()
         self.update_now_playing()
 
+    async def action_normalize(self) -> None:
+        self.normalize = not self.normalize
+        if self.loudness is None:
+            self.loudness = -14.0  # turned on although YT_PPLAYER_LOUDNESS=off
+        await self.mpv.set_loudness(self.loudness if self.normalize else None)
+        self.notify(f"Volume normalization on ({self.loudness:g} LUFS)" if self.normalize
+                    else "Volume normalization off", timeout=3)
+        self.update_now_playing()
+
     async def action_pause(self) -> None:
         if self.current is not None:
             await self.mpv.command("cycle", "pause")
@@ -478,6 +502,8 @@ class YtPPlayer(App):
             if self.queue_playlist:
                 text.append(f"   {self.queue_playlist.title} [{self.pos + 1}/{len(self.order)}]", style="dim")
             text.append(f"   vol {int(self.volume)}", style="dim")
+            if self.normalize:
+                text.append(f"   norm {self.loudness:g} LUFS", style="dim")
         if self.shuffle:
             text.append("   🔀 shuffle", style=f"bold {self.current_theme.secondary}")
         self.query_one("#np-text", Static).update(text)

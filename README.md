@@ -38,6 +38,7 @@ Rerun `./setup.sh` after a Python upgrade breaks the venv.
 | n / b          | next / previous                     |
 | r              | jump to a random track              |
 | s              | toggle shuffle                      |
+| v              | toggle volume normalization         |
 | ← / →          | seek ±10s  (`,` / `.` = ±1 min)     |
 | + / -          | volume                              |
 | /              | filter tracks (esc to close)        |
@@ -50,6 +51,8 @@ Rerun `./setup.sh` after a Python upgrade breaks the venv.
 
 - `YT_PPLAYER_BROWSER` — default `chromium`
 - `YT_PPLAYER_KEYRING` — default `GNOMEKEYRING`
+- `YT_PPLAYER_LOUDNESS` — volume normalization target in LUFS, default `-14`
+  (YouTube's own level); `off` starts with normalization off
 - `YT_PPLAYER_THEME` — a built-in Textual theme (e.g. `nord`) instead of following
   the Omarchy theme
 
