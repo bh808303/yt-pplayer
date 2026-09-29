@@ -18,7 +18,9 @@ On Arch / Omarchy, build the package from the PKGBUILD in this repo
     git clone https://github.com/bh808303/yt-pplayer
     cd yt-pplayer/aur && makepkg -si
 
-Log in to YouTube in Chromium first; yt-pplayer reuses that login.
+yt-pplayer reuses your YouTube login from Chromium. If it finds you logged out
+(or the session went stale), press `l` to open YouTube in Chromium; once you're
+logged in, yt-pplayer picks up the new login by itself.
 
 From source, for development:
 
@@ -40,7 +42,8 @@ Rerun `./setup.sh` after a Python upgrade breaks the venv.
 | + / -          | volume                              |
 | /              | filter tracks (esc to close)        |
 | tab            | switch pane                         |
-| ctrl+r         | refresh playlists                   |
+| ctrl+r         | refresh playlists (re-reads cookies)|
+| l              | log in to YouTube (when logged out) |
 | q              | quit                                |
 
 ## Config (env vars)

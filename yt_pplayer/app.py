@@ -17,7 +17,7 @@ from textual.widgets.option_list import Option
 
 from .player import Mpv
 from .theme import load_omarchy_theme, theme_stamp
-from .youtube import Playlist, Track, YouTube
+from .youtube import NotLoggedIn, Playlist, Track, YouTube
 
 
 def fmt_time(seconds: float | None) -> str:
@@ -66,6 +66,7 @@ class YtPPlayer(App):
         Binding("slash", "search", "Search"),
         Binding("escape", "close_search", "Close search", show=False),
         Binding("ctrl+r", "refresh", "Refresh"),
+        Binding("l", "login", "Log in"),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -93,6 +94,8 @@ class YtPPlayer(App):
         self.errors_in_row = 0
         self.theme_stamp = 0.0
         self.theme_count = 0
+        self.logged_out = False
+        self.cookie_stamp = 0.0
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="main"):
@@ -144,6 +147,7 @@ class YtPPlayer(App):
         self.set_playlists(self.yt.cached_playlists())
         self.query_one("#playlists").focus()
         self.refresh_playlists()
+        self.set_interval(2, self.watch_login)
 
     # -- loading ---------------------------------------------------------
 
@@ -159,15 +163,49 @@ class YtPPlayer(App):
             ol.highlighted = highlighted
 
     @work(exclusive=True, group="playlists")
-    async def refresh_playlists(self) -> None:
+    async def refresh_playlists(self, reload_cookies: bool = False) -> None:
         self.sub_title = "refreshing playlists…"
         try:
+            if reload_cookies:
+                await asyncio.to_thread(self.yt.reload_cookies)
             self.set_playlists(await asyncio.to_thread(self.yt.fetch_playlists))
+        except NotLoggedIn:
+            if not self.logged_out:
+                self.notify("Not logged in to YouTube. Press l to log in in the browser; "
+                            "yt-pplayer picks the login up by itself.", severity="warning", timeout=20)
+            self.set_logged_out(True)
         except Exception as e:
-            self.notify(f"Could not load playlists (logged in to YouTube in Chromium?)\n{e}",
-                        severity="error", timeout=20)
+            reason = str(e).removeprefix("ERROR: ")
+            self.notify(f"Could not load playlists: {reason}", severity="error", timeout=20)
+        else:
+            if self.logged_out:
+                self.notify("Logged in to YouTube")
+            self.set_logged_out(False)
         finally:
             self.sub_title = ""
+
+    def set_logged_out(self, logged_out: bool) -> None:
+        self.logged_out = logged_out
+        self.cookie_stamp = self.yt.cookie_stamp()
+        self.refresh_bindings()  # show/hide "l Log in" in the footer
+        self.update_now_playing()
+
+    def watch_login(self) -> None:
+        """While logged out, retry as soon as the browser writes new cookies."""
+        if not self.logged_out:
+            return
+        stamp = self.yt.cookie_stamp()
+        if stamp != self.cookie_stamp:
+            self.cookie_stamp = stamp
+            self.refresh_playlists(reload_cookies=True)
+
+    def action_login(self) -> None:
+        try:
+            self.yt.open_login()
+        except OSError as e:
+            self.notify(f"Could not open the browser: {e}", severity="error")
+            return
+        self.notify("Log in to YouTube in the browser; yt-pplayer continues once you're in.", timeout=10)
 
     @on(OptionList.OptionSelected, "#playlists")
     def playlist_selected(self, event: OptionList.OptionSelected) -> None:
@@ -256,6 +294,8 @@ class YtPPlayer(App):
         # Let the arrow keys move the text cursor while typing a search.
         if action == "seek" and isinstance(self.focused, Input):
             return False
+        if action == "login":
+            return self.logged_out
         return True
 
     # -- playback control ------------------------------------------------
@@ -374,7 +414,7 @@ class YtPPlayer(App):
         await self.mpv.command("add", "volume", delta)
 
     def action_refresh(self) -> None:
-        self.refresh_playlists()
+        self.refresh_playlists(reload_cookies=True)
         if self.shown:
             self.open_playlist(self.shown, focus=False)
 
@@ -422,7 +462,9 @@ class YtPPlayer(App):
 
     def update_now_playing(self) -> None:
         text = Text()
-        if self.current is None:
+        if self.current is None and self.logged_out:
+            text.append("Not logged in to YouTube — press l to log in in the browser", style="bold")
+        elif self.current is None:
             text.append("Nothing playing — pick a playlist, then a track (or press r)", style="dim")
         else:
             track = self.queue[self.current]

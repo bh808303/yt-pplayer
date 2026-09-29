@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import threading
 import time
 import urllib.parse
@@ -13,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import yt_dlp
-from yt_dlp.cookies import extract_cookies_from_browser
+from yt_dlp.cookies import _get_chromium_based_browser_settings, extract_cookies_from_browser
 
 BROWSER = os.environ.get("YT_PPLAYER_BROWSER", "chromium")
 KEYRING = os.environ.get("YT_PPLAYER_KEYRING", "GNOMEKEYRING")
@@ -22,6 +24,26 @@ CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "yt
 # Segments skipped inside a track. Intro/outro are left out on purpose: in DJ mixes
 # those are usually music.
 SPONSORBLOCK_CATEGORIES = ["sponsor", "selfpromo", "interaction", "music_offtopic"]
+
+# Commands that open each yt-dlp browser name, tried in order (xdg-open as a last resort).
+BROWSER_COMMANDS = {
+    "brave": ["brave", "brave-browser"],
+    "chrome": ["google-chrome-stable", "google-chrome"],
+    "chromium": ["chromium"],
+    "edge": ["microsoft-edge-stable", "microsoft-edge"],
+    "firefox": ["firefox"],
+    "opera": ["opera"],
+    "vivaldi": ["vivaldi-stable", "vivaldi"],
+}
+
+
+class NotLoggedIn(Exception):
+    """YouTube rejected the browser cookies (logged out, or the session went stale)."""
+
+
+def is_auth_error(e: Exception) -> bool:
+    msg = str(e).lower()
+    return any(s in msg for s in ("401", "unauthorized", "sign in", "login required", "authentication"))
 
 
 @dataclass
@@ -66,6 +88,33 @@ class YouTube:
                 self._cookies = extract_cookies_from_browser(BROWSER, None, keyring=KEYRING)
             return self._cookies
 
+    def reload_cookies(self) -> None:
+        """Re-read the browser's cookies, e.g. after logging in again."""
+        fresh = extract_cookies_from_browser(BROWSER, None, keyring=KEYRING)
+        with self._cookie_lock:
+            if self._cookies is None:
+                self._cookies = fresh
+                return
+            # Refill the shared jar in place: yt-dlp's request handlers keep a reference to it.
+            self._cookies.clear()
+            for cookie in fresh:
+                self._cookies.set_cookie(cookie)
+
+    def cookie_stamp(self) -> float:
+        """Last change of the browser's cookie database (0 if unknown), to notice a login."""
+        try:
+            root = Path(_get_chromium_based_browser_settings(BROWSER)["browser_dir"])
+        except Exception:
+            return 0.0  # not Chromium-based; logging in then needs a manual refresh
+        stamps = [p.stat().st_mtime for p in (*root.glob("*/Cookies"), *root.glob("*/Network/Cookies"))]
+        return max(stamps, default=0.0)
+
+    def open_login(self) -> None:
+        """Open YouTube in the browser whose cookies we read, so the user can log in."""
+        cmd = next((c for c in BROWSER_COMMANDS.get(BROWSER, []) if shutil.which(c)), "xdg-open")
+        subprocess.Popen([cmd, "https://www.youtube.com/"], stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
     def _ydl(self, flat: bool) -> yt_dlp.YoutubeDL:
         key = "flat" if flat else "full"
         ydl = getattr(self._local, key, None)
@@ -86,7 +135,21 @@ class YouTube:
         return [Playlist(**p) for p in _read_json(CACHE_DIR / "playlists.json", [])]
 
     def fetch_playlists(self) -> list[Playlist]:
-        info = self._ydl(flat=True).extract_info("https://www.youtube.com/feed/playlists", download=False)
+        """Fetch the user's playlists; on an auth error, re-read the cookies and retry once."""
+        url = "https://www.youtube.com/feed/playlists"
+        try:
+            info = self._ydl(flat=True).extract_info(url, download=False)
+        except Exception as e:
+            if not is_auth_error(e):
+                raise
+            # The browser may have refreshed its session since we read the cookies.
+            self.reload_cookies()
+            try:
+                info = self._ydl(flat=True).extract_info(url, download=False)
+            except Exception as e:
+                if is_auth_error(e):
+                    raise NotLoggedIn(str(e)) from e
+                raise
         result = []
         for e in info.get("entries") or []:
             url = e.get("url") or ""
